@@ -1,0 +1,18 @@
+services:
+
+  bus-eta-2gis:
+    build: .
+    image: bus-eta-2gis
+    container_name: bus-eta-2gis
+    restart: unless-stopped
+
+    environment:
+      AVG_SPEED: 26
+      DGS_URL: https://eta.api.2gis.ru/v2/points/directions
+      ETA_LIMIT: 30
+      MISS_LIMIT: 5
+      POLL_INTERVAL: 15
+
+    ports:
+      - "8000:8000"
+
