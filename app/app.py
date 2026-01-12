@@ -168,9 +168,9 @@ async def get_eta(
              cached_item['miss_count'] = 0
              return {"eta": None}
         else:
-            logger.info(f"Нет подходящих автобусов. Счетчик пропусков: {cached_item['miss_count']}/{MISS_LIMIT}. Возвращаем '>{ETA_LIMIT_MINUTES}м'.")
+            logger.info(f"Нет подходящих автобусов. Счетчик пропусков: {cached_item['miss_count']}/{MISS_LIMIT}. Возвращаем '>{ETA_LIMIT_MINUTES}'.")
             # Возвращаем строку, если лимит не достигнут
-            result_value = f">{ETA_LIMIT_MINUTES}м"
+            result_value = f">{ETA_LIMIT_MINUTES}"
             # Не сбрасываем счетчик здесь, он сбросится при следующем успешном нахождении кандидата
             return {"eta": result_value}
 
@@ -206,3 +206,4 @@ if __name__ == "__main__":
     # Этот блок позволяет запустить сервер напрямую из Python (например, для отладки).
     # В Docker используется команда из Dockerfile.
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

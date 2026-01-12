@@ -12,6 +12,7 @@ services:
       ETA_LIMIT: 30
       MISS_LIMIT: 5
       POLL_INTERVAL: 15
+      TZ: Europe/Kaliningrad
 
     ports:
       - "8000:8000"
