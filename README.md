@@ -24,7 +24,7 @@
 3.  **Поиск и расчет:** Из закешированных данных извлекаются устройства (транспорт), соответствующие `route_name` и `direction_id`. Для каждого подходящего устройства рассчитывается пройденная дистанция (`direction_length * geometry_way_part`) и расстояние до целевой остановки (`direction_length * stop_part`). Если транспорт еще не дошел до остановки, рассчитывается ETA на основе оставшегося расстояния и средней скорости (`AVG_SPEED`).
 4.  **Выбор минимального:** Из всех рассчитанных ETAs выбирается минимальное.
 5.  **Фильтрация и форматирование:** Если минимальное ETA превышает заданный лимит (`ETA_LIMIT`), или подходящих транспортных средств не найдено (и счетчик пропусков превысил `MISS_LIMIT`), возвращается специальное значение (например, строка `">Xм"` или `null`).
-6.  **Ответ:** Сервис возвращает JSON-объект `{"eta": ...}`, где `...` — это число (в секундах или минутах, в зависимости от параметра `unit`) или строка.
+6.  **Ответ:** Сервис возвращает JSON-объект `{"eta": ...}`, где `...` — это число (в секундах или минутах, в зависимости от параметра `unit`) или строка. Если указан параметр `return_all_sorted`, то возвращается массив чисел.
 
 ---
 
@@ -88,7 +88,7 @@ services:
 Сервис предоставляет GET-эндпоинт `/eta`.
 
 ```bash
-GET http://<SERVER_IP>:8000/eta?route_name=<ROUTE_NAME>&direction_id=<DIRECTION_ID>&stop_part=<STOP_PART>&unit=<UNIT_TYPE>
+GET http://<SERVER_IP>:8000/eta?route_name=<ROUTE_NAME>&direction_id=<DIRECTION_ID>&stop_part=<STOP_PART>&unit=<UNIT_TYPE>&return_all_sorted=<BOOLEAN>
 ```
 
 Параметры:
@@ -98,6 +98,7 @@ GET http://<SERVER_IP>:8000/eta?route_name=<ROUTE_NAME>&direction_id=<DIRECTION_
 - `direction_id` (string, required): Уникальный идентификатор направления движения маршрута. Обычно их два: туда и обратно.
 - `stop_part` (float, required): Доля пути от начала маршрута до нужной точки (остановки). Диапазон от `0.0` до `1.0`. Определяется экспериментально.
 - `unit` (string, optional, default="min"): Единицы измерения для возвращаемого ETA. Возможные значения: `"min"` (минуты) или `"sec"` (секунды).
+- `return_all_sorted` (boolean, optional): Возвращает массив чисел, представляющих собой времена прибытия последующих автобусов. 
 
 
 > [!TIP]
@@ -113,15 +114,16 @@ GET http://<SERVER_IP>:8000/eta?route_name=<ROUTE_NAME>&direction_id=<DIRECTION_
 Пример запроса:
 
 ```bash
-curl "http://192.168.0.17:8000/eta?route_name=168&direction_id=4504746941846382&stop_part=0.4440&unit=min"
+curl "http://<SERVER_IP>:8000/eta?route_name=168&direction_id=4504746941846382&stop_part=0.4440&unit=min&return_all_sorted=true"
 ```
 
-Пример ответа:
+Примеры ответов:
 
-- `{"eta": 5.2}` — Транспорт придет примерно через 5.2 минуты.
+- `{"eta": 5}` — Транспорт придет примерно через 5 минут.
 - `{"eta": 123}` — Транспорт придет примерно через 123 секунды.
 - `{"eta": ">30м"}` — Ближайший транспорт придет позже 30 минут (лимит).
 - `{"eta": null}` — Подходящий транспорт не найден или превышен `MISS_LIMIT`.
+- `{"etas":[9, 22]}` - Транспорт придет примерно через 9 минут, следующий через 22 минуты.
 
 ---
 
@@ -152,6 +154,27 @@ template:
         attributes:
           raw_eta_value: "{{ state_attr('sensor.bus_168_eta_raw_min_v2', 'eta') }}"
           last_updated_rest: "{{ state_attr('sensor.bus_168_eta_raw_min_v2', 'last_updated_rest') | default(now()) }}"
+```
+
+Или для нескольких автобусов:
+
+```yaml
+rest:
+  - resource: "http://SERVER:8000/eta?route_name=168&direction_id=4504746941846382&stop_part=0.4440&unit=min&return_all_sorted=true"
+    method: GET
+    scan_interval: 15 # Должно соответствовать POLL_INTERVAL или быть чуть больше
+    sensor:
+      - name: "Автобус 168:"
+        unique_id: bus_168_etas_raw_min_v2
+        value_template: >
+          {% if value_json.etas and value_json.etas | length > 0 %}
+            {{ value_json.etas }}
+          {% else %}
+            -
+          {% endif %}
+        json_attributes_path: "$"
+        json_attributes:
+          - etas
 ```
 
 > [!IMPORTANT]
